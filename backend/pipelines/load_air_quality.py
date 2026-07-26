@@ -1,5 +1,6 @@
 import pandas as pd
 import psycopg2
+# Webscraping the data from Air Quality Ontario and inserting into Air_Quality_Readings relational table in the database
 
 url = "https://www.airqualityontario.com/aqhi/locations.php?forecast_period=1&text_only=1"
 tables = pd.read_html(url)
