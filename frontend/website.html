@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FireWatch AI — Ontario</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  :root {
+    --bg: #14110f;
+    --panel: #1c1815;
+    --ember: #e8622c;
+    --smoke: #a89f92;
+    --text: #f2ede6;
+    --danger: #e8452c;
+    --warn: #e8a92c;
+    --ok: #6fae5c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    padding: 20px 28px;
+    border-bottom: 1px solid #2a2521;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 20px;
+    letter-spacing: 0.5px;
+  }
+  header span {
+    color: var(--smoke);
+    font-size: 13px;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    height: calc(100vh - 65px);
+  }
+  #map { width: 100%; height: 100%; background: #0d0b0a; }
+  aside {
+    background: var(--panel);
+    overflow-y: auto;
+    padding: 16px;
+    border-left: 1px solid #2a2521;
+  }
+  aside h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--smoke);
+    margin: 18px 0 10px;
+  }
+  .fire-row {
+    padding: 10px 12px;
+    border-radius: 6px;
+    background: #221d19;
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+  .fire-row .top-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    gap: 8px;
+  }
+  .fire-row .region-name {
+    font-weight: 500;
+  }
+  .fire-row .hectares {
+    color: var(--smoke);
+    font-size: 12px;
+  }
+  .badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .badge.out { background: rgba(232,69,44,0.2); color: var(--danger); }
+  .badge.held { background: rgba(232,169,44,0.2); color: var(--warn); }
+  .badge.under { background: rgba(111,174,92,0.2); color: var(--ok); }
+
+  .legend {
+    position: absolute;
+    bottom: 18px;
+    left: 18px;
+    background: rgba(28, 24, 21, 0.92);
+    border: 1px solid #2a2521;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--text);
+    z-index: 1000;
+    max-width: 230px;
+  }
+  .legend h3 {
+    margin: 0 0 6px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--smoke);
+  }
+  .legend .row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .legend .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .legend .divider {
+    border-top: 1px solid #2a2521;
+    margin: 8px 0;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .tab-btn {
+    flex: 1;
+    background: #221d19;
+    border: 1px solid #2a2521;
+    color: var(--smoke);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .tab-btn.active {
+    background: var(--ember);
+    color: #14110f;
+    border-color: var(--ember);
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🔥 FireWatch AI</h1>
+  <span>Live Ontario wildfire &amp; air quality data — CWFIS &amp; Air Quality Ontario</span>
+</header>
+
+<div class="layout">
+  <div id="map">
+    <div class="legend">
+      <h3>Fire Status</h3>
+      <div class="row"><span class="dot" style="background:#e8452c"></span> Out of control</div>
+      <div class="row"><span class="dot" style="background:#e8a92c"></span> Being held</div>
+      <div class="row"><span class="dot" style="background:#6fae5c"></span> Under control</div>
+      <div class="divider"></div>
+      <h3>Air Quality Health Index</h3>
+      <div class="row"><span class="dot" style="background:#6fae5c"></span> 1–3 Low risk</div>
+      <div class="row"><span class="dot" style="background:#e8a92c"></span> 4–6 Moderate risk</div>
+      <div class="row"><span class="dot" style="background:#e8452c"></span> 7+ High risk</div>
+    </div>
+  </div>
+  <aside>
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-fires-btn" onclick="switchTab('fires')">Active Fires</button>
+      <button class="tab-btn" id="tab-aq-btn" onclick="switchTab('aq')">Air Quality</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-fires">
+      <h2 id="fire-count">Active Fires</h2>
+      <div id="fire-list"></div>
+    </div>
+
+    <div class="tab-panel" id="tab-aq">
+      <h2 id="aq-count">Air Quality</h2>
+      <div id="aq-list"></div>
+    </div>
+  </aside>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const API = "http://127.0.0.1:8000";
+
+  // Switches which panel (fires or air quality) is visible, and highlights the active tab button
+  function switchTab(name) {
+    document.getElementById('tab-fires').classList.toggle('active', name === 'fires');
+    document.getElementById('tab-aq').classList.toggle('active', name === 'aq');
+    document.getElementById('tab-fires-btn').classList.toggle('active', name === 'fires');
+    document.getElementById('tab-aq-btn').classList.toggle('active', name === 'aq');
+  }
+
+  const map = L.map('map', { zoomControl: true }).setView([49.5, -85], 5);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CARTO'
+  }).addTo(map);
+
+  function statusClass(status) {
+    if (status.includes("out of control")) return "out";
+    if (status.includes("held")) return "held";
+    return "under";
+  }
+  function statusColor(status) {
+    if (status.includes("out of control")) return "#e8452c";
+    if (status.includes("held")) return "#e8a92c";
+    return "#6fae5c";
+  }
+
+  fetch(`${API}/fires`)
+    .then(r => r.json())
+    .then(fires => {
+      document.getElementById('fire-count').textContent = `Active Fires (${fires.length})`;
+      const list = document.getElementById('fire-list');
+
+      fires.forEach(fire => {
+        const row = document.createElement('div');
+        row.className = 'fire-row';
+        // Region name + status on the top line, hectares on its own line below so long names never get cut off
+        row.innerHTML = `
+          <div class="top-line">
+            <span class="region-name">${fire.region ? fire.region + ', Ontario (Fire ' + fire.fire_number.split('_').pop().replace(/^0+/, '') + ')' : fire.fire_number}</span>
+            <span class="badge ${statusClass(fire.status)}">${fire.status}</span>
+          </div>
+          <div class="hectares">${fire.size_hectares.toLocaleString()} hectares</div>
+        `;
+        list.appendChild(row);
+      });
+    });
+
+  fetch(`${API}/fires-geo`)
+    .then(r => r.json())
+    .then(fires => {
+      fires.forEach(fire => {
+        if (fire.lat && fire.lng) {
+          L.circleMarker([fire.lat, fire.lng], {
+            radius: Math.min(Math.max(Math.sqrt(fire.size_hectares) / 15, 3), 15),
+            color: statusColor(fire.status),
+            fillColor: statusColor(fire.status),
+            fillOpacity: 0.5,
+            weight: 1.5
+          }).bindPopup(`<b>${fire.fire_number}</b><br>${fire.status}<br>${fire.size_hectares.toLocaleString()} hectares</b>`).addTo(map);
+        }
+      });
+    });
+
+  // Fetches real Air Quality Ontario readings and renders them below the fire list, reusing the same row/badge styling
+  fetch(`${API}/air-quality`)
+    .then(r => r.json())
+    .then(readings => {
+      document.getElementById('aq-count').textContent = `Air Quality (${readings.length})`;
+      const list = document.getElementById('aq-list');
+
+      function aqhiClass(aqhi) {
+        if (aqhi >= 7) return "out";
+        if (aqhi >= 4) return "held";
+        return "under";
+      }
+
+      readings.forEach(reading => {
+        const row = document.createElement('div');
+        row.className = 'fire-row';
+        row.innerHTML = `
+          <div class="top-line">
+            <span class="region-name">${reading.region}, Ontario</span>
+            <span class="badge ${aqhiClass(reading.aqhi)}">AQHI ${reading.aqhi}</span>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+    });
+</script>
+
+</body>
+</html>
