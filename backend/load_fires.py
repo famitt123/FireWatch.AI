@@ -1,3 +1,4 @@
+# Load the data from the CSV file into the two relational tables: fire_incidents and regions.
 import pandas as pd
 
 df = pd.read_csv("cwfif_Ontario_activefires.csv")
