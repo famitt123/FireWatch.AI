@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 import psycopg2 # importing the psycopg2 library to let python send sql commands to Postgres
+import requests
 
 app = FastAPI()
 from fastapi.middleware.cors import CORSMiddleware
@@ -96,6 +97,39 @@ def get_fires_geo():
     conn.close()
     return [{"fire_number": r[0], "status": r[1], "size_hectares": r[2], "lat": r[3], "lng": r[4]} for r in rows]
 
+# Takes a user's question, finds the most relevant real fire sentences using vector similarity, and asks Ollama to answer using only that real context
+@app.get('/chat')
+def chat(question: str):
+    # Step 1: convert the question into a vector, using the same embedding model used to build document_embeddings
+    embed_response = requests.post(
+        "http://localhost:11434/api/embeddings",
+        json={"model": "nomic-embed-text", "prompt": question}
+    )
+    question_vector = embed_response.json()["embedding"]
+
+    # Step 2: find the 3 real fire sentences whose vectors are closest in meaning to the question
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT chunk_text FROM document_embeddings ORDER BY embedding <-> %s::vector LIMIT 3;",
+        (question_vector,)
+    )
+    matches = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    context = "\n".join(row[0] for row in matches) # combine the 3 matched real sentences into one block of context
+
+    # Step 3: ask Ollama's chat model to answer, using only the real retrieved sentences as grounding
+    prompt = f"Using only this information, answer the question in one or two sentences:\n{context}\n\nQuestion: {question}"
+    chat_response = requests.post(
+        "http://localhost:11434/api/generate",
+        json={"model": "llama3.1:8b", "prompt": prompt, "stream": False}
+    )
+    answer = chat_response.json()["response"]
+
+    return {"answer": answer, "sources": [row[0] for row in matches]}
+    
 @app.get('/')
 def read_root():
     return {'message': 'FireWatch.AI backend server is Running :D'}
