@@ -83,7 +83,7 @@ FireWatch.AI/
 
 
 **Conceptual ER diagram** — entities, their attributes and how they relate:
-![Conceptual entity relationship diagram](./images/conceptual_erd.png)
+![Conceptual entity relationship diagram](./images/erd.png)
 
 Five entities: `regions`, `fire_incidents`, `air_quality_readings`, `fire_documents`, `document_embeddings`. Each oval is an attribute, each diamond is a relationship, and the `(1,M)` labels on the connecting lines show cardinality — read as "one side, many side." Concretely:
 
