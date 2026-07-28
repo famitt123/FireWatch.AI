@@ -82,7 +82,8 @@ FireWatch.AI/
 (NOTE: USED [ERDPlus] to build the Entity relationship and Relational Schema initally (https://erdplus.com/)![Conceptual entity relationship diagram])
 
 
-**Conceptual ER diagram** — entities, their attributes and how they relate:(./images/erd.png)
+**Conceptual ER diagram** — entities, their attributes and how they relate:
+[Conceptual Entity relationship diagram](./images/erd.png)
 
 Five entities: `regions`, `fire_incidents`, `air_quality_readings`, `fire_documents`, `document_embeddings`. Each oval is an attribute, each diamond is a relationship, and the `(1,M)` labels on the connecting lines show cardinality — read as "one side, many side." Concretely:
 
