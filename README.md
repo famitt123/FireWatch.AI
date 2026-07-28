@@ -165,3 +165,5 @@ Runs locally only — Ollama needs a local server, and free hosting can't run th
 - Scheduled pipeline instead of manual runs
 - Real narrative bulletins as a richer source for Ember
 - Public deployment once there's a hosting plan for the AI layer
+
+## LIVE DEMO COMING SOON................
